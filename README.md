@@ -1,6 +1,8 @@
 ```markdown
 # 📂 File Structure
-
+nb:
+⚙️ : main file
+⚙️ +  📜 : main file with external files
 .
 ├───┐
 │   ├─ 📜 data.log
