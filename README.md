@@ -1,7 +1,6 @@
 ```markdown
 # 📂 File Structure
 
-```bash
 .
 ├───┐
 │   ├─ 📜 data.log
