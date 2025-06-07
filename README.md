@@ -1,8 +1,14 @@
 ```markdown
 # 📂 File Structure
 
-┌─ 📜 sys.log
-├─ 📜 data.log
-└─> ⚙️ phpinfo.php (main file)
+```bash
+.
+├───┐
+│   ├─ 📜 data.log
+│   └─ 📜 sys.log
+│
+└─> ⚙️ phpinfo.php
 
-└─ ⚡ ek0ntol.php
+
+.
+└── ⚡ ek0ntol.php
