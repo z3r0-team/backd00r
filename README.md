@@ -10,4 +10,6 @@
 
 
 .
-└── ⚡ ek0ntol.php
+├── ⚙️ ek0ntol.php
+│
+└─> ⚙️ uploader.php
