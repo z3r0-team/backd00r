@@ -3,7 +3,7 @@
 
 nb:
 ⚙️ : main file
-⚙️ +  📜 : main file with external files
+⚙️ +  📜 : main file with external files (bypassing firewall???)
 .
 ├───┐
 │   ├─ 📜 data.log
