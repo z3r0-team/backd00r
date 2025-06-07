@@ -1,12 +1,8 @@
 ```markdown
 # 📂 File Structure
 
-## Core Process
-
 ┌─ 📜 sys.log
 ├─ 📜 data.log
-└─> ⚙️ phpinfo.php
-
-## Standalone
+└─> ⚙️ phpinfo.php (main file)
 
 └─ ⚡ ek0ntol.php
