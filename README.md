@@ -16,4 +16,4 @@ nb:
 ├── ⚙️ ek0ntol.php
 └─> ⚙️ uploader.php
 
-Backdoor by ./s3nt1n3L - z3r0-team
+Backdoor by ./s3nt1n3L - z3r0-team!
